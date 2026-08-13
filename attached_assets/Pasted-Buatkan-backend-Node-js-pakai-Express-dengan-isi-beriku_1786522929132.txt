@@ -1,0 +1,49 @@
+Buatkan backend Node.js pakai Express dengan isi berikut, simpan sebagai index.js:
+
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+
+app.get('/health', async (req, res) => {
+  const { error } = await supabase.from('complaints_tickets').select('id').limit(1);
+  if (error) return res.status(500).json({ status: 'error', message: error.message });
+  res.json({ status: 'ok' });
+});
+
+async function classifyMessage(pesanWA) {
+  const systemPrompt = `Kamu menyaring pesan grup WhatsApp operasional pelabuhan.
+Tugas: tentukan apakah pesan ini KELUHAN PELANGGAN sungguhan (bukan basa-basi/diskusi biasa).
+Kalau ya, tentukan kategori & PIC tujuan mengikuti aturan:
+- Kata kunci IT/TOS/OCR/sistem/network -> PIC: ILCS
+- Kata kunci billing/invoice/storage/tagihan/bayar -> PIC: SIVIA
+- Selain itu (peralatan, crane, delivery, yard, dsb) -> PIC: Operasi / Asman Operasi
+Balas HANYA dalam format JSON tanpa teks lain, contoh:
+{"is_complaint": true, "category": "Peralatan", "pic": "Operasi / Asman Operasi"}`;
+
+  const result = await model.generateContent(`${systemPrompt}\n\nPesan: "${pesanWA}"`);
+  const text = result.response.text().replace(/```json|```/g, '').trim();
+  return JSON.parse(text);
+}
+
+app.post('/api/classify', async (req, res) => {
+  try {
+    const { message } = req.body;
+    const hasil = await classifyMessage(message);
+    res.json(hasil);
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+app.listen(3000, () => console.log('Backend jalan di port 3000'));
+
+Install dependency express, cors, @supabase/supabase-js, dan @google/generative-ai. Jangan hardcode API key, ambil dari environment variable/Secrets.

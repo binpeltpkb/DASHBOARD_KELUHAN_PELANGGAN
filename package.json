@@ -1,0 +1,19 @@
+{
+  "name": "operational-complaints-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Express API untuk klasifikasi keluhan operasional pelabuhan.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.112.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
